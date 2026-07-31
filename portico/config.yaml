@@ -1,6 +1,6 @@
 name: "Portico"
 description: "Keep Airbnb / Booking.com / VRBO reservations in sync with your smart locks. Extensions and cancellations flow to the PIN in under 2 minutes."
-version: "0.2.0"
+version: "0.3.1"
 slug: "portico"
 init: false
 arch:
@@ -54,6 +54,13 @@ options:
   # Change only if you already have codes that start with "s~" or "h~"
   room_to_door_prefix: "s~ "
   door_to_room_prefix: "h~ "
+
+  # v0.3.1 — Manual early check-in overrides
+  # Dashboard exposes shift-buttons on each guest card.
+  # dry_run: true logs intent but writes nothing to Seam. Flip false after button-soak.
+  # max_delta_h: cap in hours; larger requests need confirm:"YES" in the API body.
+  time_override_dry_run: true
+  time_override_max_delta_h: 6
 schema:
   site_name: str?
   account1_api_key: str?
@@ -69,3 +76,5 @@ schema:
     - str
   room_to_door_prefix: str?
   door_to_room_prefix: str?
+  time_override_dry_run: bool?
+  time_override_max_delta_h: int?

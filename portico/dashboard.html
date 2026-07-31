@@ -142,6 +142,10 @@
   .actions-row .btn-neutral { background: var(--surface3); color: var(--text); }
   .actions-row .btn-danger { background: var(--red-bg); color: var(--red); }
   .sync-note { font-size: 11px; color: var(--amber); padding: 8px 0; text-align: center; }
+  .shift-current { padding: 10px 12px; background: var(--surface2); border-radius: 8px; font-size: 14px; color: var(--text); }
+  .shift-presets { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .shift-preset { height: 44px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 15px; font-weight: 600; cursor: pointer; }
+  .shift-preset:hover { background: var(--blue-dim); border-color: var(--blue); color: var(--blue); }
 
   /* Bottom nav */
   .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(22,22,26,0.92); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-top: 1px solid var(--border); display: flex; padding: 6px 0 max(8px, env(safe-area-inset-bottom)); z-index: 40; }
@@ -311,6 +315,8 @@ async function loadAppConfig() {
       if (eyebrow) eyebrow.textContent = SITE_NAME;
       document.title = SITE_NAME + ' Locks';
     }
+    if (typeof c.time_override_max_delta_h === 'number') window.PORTICO_MAX_DELTA_H = c.time_override_max_delta_h;
+    if (typeof c.time_override_dry_run === 'boolean') window.PORTICO_DRY_RUN = c.time_override_dry_run;
   } catch(e) { /* keep fallback defaults */ }
 }
 
@@ -618,6 +624,7 @@ function renderDeviceCard(d, type) {
           <button class="code-pin ${isPerm?'perm':''}" onclick="copyPin('${c.code||''}')">${esc(c.code)||'****'}</button>
           <div class="code-actions">
             ${!isPerm ? `<button class="code-btn" onclick="sharePin('${esc(display).replace(/'/g,"\\'")}','${c.code||''}')" aria-label="Share"><i class="ti ti-share-2"></i></button>` : ''}
+            ${!isPerm && t !== 's' && t !== 'h' && c.type === 'time_bound' && !expired ? `<button class="code-btn" onclick="openShiftSheet(${d._acct},'${c.access_code_id}','${d.device_id}')" aria-label="Shift check-in time" title="Shift check-in time"><i class="ti ti-clock"></i></button>` : ''}
             ${!isPerm ? `<button class="code-btn" onclick="openEditSheet(${d._acct},'${c.access_code_id}','${d.device_id}')" aria-label="Edit"><i class="ti ti-pencil"></i></button>` : ''}
             ${!isPerm ? `<button class="code-btn del" onclick="delCode(${d._acct},'${c.access_code_id}')" aria-label="Delete"><i class="ti ti-x"></i></button>` : ''}
           </div>
@@ -1038,6 +1045,102 @@ async function submitEdit(acct, codeId, prefix) {
 
 function closeSheet() {
   document.getElementById('sheetBg').classList.remove('open');
+}
+
+// ── Shift check-in time (v0.3.1 manual override) ──────────────────────────
+function fmtLocalTime(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return d.toLocaleString([], { weekday:'short', month:'short', day:'numeric', hour:'numeric', minute:'2-digit' });
+}
+
+function openShiftSheet(acct, codeId, deviceId) {
+  const dev = devices.find(d=>d.device_id===deviceId);
+  const code = dev?._codes?.find(c=>c.access_code_id===codeId);
+  if (!code) return;
+  const display = codeDisplayName(code);
+  const curStart = code.starts_at;
+  const curEnd = code.ends_at;
+
+  const presets = [-2, -1, +1, +2];
+  const presetHtml = presets.map(h =>
+    `<button class="shift-preset" onclick="submitShift(${acct},'${codeId}',${h})">${h>0?'+':''}${h}h</button>`
+  ).join('');
+
+  const dryRun = !!window.PORTICO_DRY_RUN;
+  const dryBanner = dryRun ? `<div class="sync-note" style="color:var(--amber);border:1px dashed var(--amber);border-radius:6px;padding:6px 10px">DRY-RUN mode: no actual Seam write. Flip <code>time_override_dry_run:false</code> in add-on options to apply.</div>` : '';
+
+  document.getElementById('sheetContent').innerHTML = `
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <div>
+        <div class="sheet-title">Shift check-in</div>
+        <div class="sheet-sub">${esc(display)} · ${esc(dev.properties?.name||'Device')}</div>
+      </div>
+      <button class="sheet-close" onclick="closeSheet()"><i class="ti ti-x"></i></button>
+    </div>
+    ${dryBanner}
+    <div class="field">
+      <label class="field-label">Current check-in</label>
+      <div class="shift-current">${fmtLocalTime(curStart)}</div>
+    </div>
+    <div class="field">
+      <label class="field-label">Quick shift</label>
+      <div class="shift-presets">${presetHtml}</div>
+    </div>
+    <div class="field">
+      <label class="field-label">Custom (hours, e.g. -3 or 2.5)</label>
+      <div class="pin-row">
+        <input type="number" id="shiftCustom" step="0.5" placeholder="-3" style="flex:1">
+        <button onclick="submitShiftCustom(${acct},'${codeId}')"><i class="ti ti-arrow-right"></i>Apply</button>
+      </div>
+    </div>
+    <div class="sync-note">
+      Only starts_at changes. PIN and check-out are preserved.
+      Larger than ±${window.PORTICO_MAX_DELTA_H || 6}h needs explicit confirm.
+    </div>
+    <div class="sheet-actions">
+      <button class="cancel" onclick="closeSheet()">Cancel</button>
+    </div>`;
+  document.getElementById('sheetBg').classList.add('open');
+}
+
+function submitShiftCustom(acct, codeId) {
+  const v = parseFloat(document.getElementById('shiftCustom').value);
+  if (!isFinite(v) || v === 0) return toast('Enter a non-zero number of hours', 'error');
+  submitShift(acct, codeId, v);
+}
+
+async function submitShift(acct, codeId, deltaHours, confirmed) {
+  const body = { code_id: codeId, account: acct, delta_hours: deltaHours };
+  if (confirmed) body.confirm = 'YES';
+  try {
+    const r = await fetch('api/checkin-override', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (r.status === 422 && data.hint && !confirmed) {
+      if (confirm(`${data.error}\n\nProceed anyway?`)) {
+        return submitShift(acct, codeId, deltaHours, true);
+      }
+      return;
+    }
+    if (!r.ok) {
+      toast('Failed: ' + (data.error || r.status), 'error');
+      addLog('Shift failed: ' + (data.error || r.status), 'error');
+      return;
+    }
+    const tag = data.dry_run ? ' (dry-run)' : '';
+    toast(`${data.code_name}: check-in now ${fmtLocalTime(data.new_start)}${tag}`, 'success');
+    addLog(`Shifted ${data.code_name} by ${deltaHours>0?'+':''}${deltaHours}h${tag}`, 'success');
+    closeSheet();
+    await loadCodes();
+  } catch (e) {
+    toast('Failed: ' + e.message, 'error');
+    addLog('Shift error: ' + e.message, 'error');
+  }
 }
 
 async function doLock(acct, deviceId, btn) {

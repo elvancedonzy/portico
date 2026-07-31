@@ -34,7 +34,7 @@ The new endpoint aggregates code data into a HA-friendly JSON shape:
 import json
 import re
 import subprocess
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
 from shared_config import (
@@ -50,6 +50,7 @@ SEAM_API = "https://connect.getseam.com"
 
 SYNC_STATUS_FILE = "/data/sync_status.json"
 SYNC_LOG_FILE = "/data/seam_sync.log"
+CHECKIN_OVERRIDE_LOG = "/data/checkin_overrides.log"
 
 ROOM_AC_SWITCHES = {
     "Rosehill Pl Room 1": "switch.room_1_ac",
@@ -73,13 +74,18 @@ try:
         opts = json.load(f)
     K1 = opts.get("account1_api_key", "")
     K2 = opts.get("account2_api_key", "")
+    TIME_OVERRIDE_DRY_RUN = bool(opts.get("time_override_dry_run", True))
+    TIME_OVERRIDE_MAX_DELTA_H = int(opts.get("time_override_max_delta_h", 6) or 6)
 except Exception as e:
     print("Config error:", redact(e), flush=True)
     K1 = ""
     K2 = ""
+    TIME_OVERRIDE_DRY_RUN = True
+    TIME_OVERRIDE_MAX_DELTA_H = 6
 
 print("K1 set:", bool(K1), flush=True)
 print("K2 set:", bool(K2), flush=True)
+print(f"time_override dry_run={TIME_OVERRIDE_DRY_RUN} max_delta_h={TIME_OVERRIDE_MAX_DELTA_H}", flush=True)
 
 MANIFEST = json.dumps({
     "name": f"{SITE_NAME} Locks",
@@ -355,6 +361,10 @@ class H(BaseHTTPRequestHandler):
             self.ac_update()
         elif self.path == "/api/sync-trigger":
             self.sync_trigger()
+        elif self.path == "/api/checkin-override":
+            if not self._is_ingress():
+                return self._json({"error": "ingress-only endpoint"}, status=403)
+            self.checkin_override()
         else:
             self.proxy("POST")
 
@@ -386,6 +396,138 @@ class H(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(payload)
 
+    def checkin_override(self):
+        """
+        Shift a guest's check-in time (starts_at only, PIN preserved).
+
+        Body: {
+          "code_id": "<seam_code_id>",
+          "account": 1 | 2,                # which Seam API key
+          "delta_hours": <float>,          # signed; negative = earlier
+          "confirm": "YES"                 # required if |delta_hours| > TIME_OVERRIDE_MAX_DELTA_H
+        }
+
+        Guardrails:
+          - |delta| < 5 min  -> 400 no-op
+          - |delta| > max_h  -> 422 unless confirm == "YES"
+          - new_start in the past                 -> 422
+          - new_start >= existing ends_at         -> 422
+          - dry_run mode                          -> logs intent, no Seam write
+          - PIN never touched (starts_at update only)
+        """
+        try:
+            length = int(self.headers.get("Content-Length", 0))
+            body = json.loads(self.rfile.read(length)) if length else {}
+            code_id = str(body.get("code_id", "")).strip()
+            account = int(body.get("account", 1))
+            delta_hours = float(body.get("delta_hours", 0))
+            confirm = str(body.get("confirm", "")).strip().upper()
+        except Exception as e:
+            return self._json({"error": f"bad request: {e}"}, status=400)
+
+        if not code_id:
+            return self._json({"error": "code_id required"}, status=400)
+        if account not in (1, 2):
+            return self._json({"error": "account must be 1 or 2"}, status=400)
+
+        # Guardrail: trivial shift
+        if abs(delta_hours) * 3600 < 300:
+            return self._json({"error": "delta must be at least 5 minutes"}, status=400)
+
+        # Guardrail: cap without explicit confirm
+        if abs(delta_hours) > TIME_OVERRIDE_MAX_DELTA_H and confirm != "YES":
+            return self._json({
+                "error": f"delta {delta_hours:+.1f}h exceeds cap of {TIME_OVERRIDE_MAX_DELTA_H}h",
+                "hint": "resend with confirm:\"YES\" to override cap",
+            }, status=422)
+
+        api_key = K1 if account == 1 else K2
+        if not api_key:
+            return self._json({"error": f"no api key for account {account}"}, status=500)
+
+        # Fetch current code
+        got = seam_request(api_key, "GET", f"/access_codes/get?access_code_id={code_id}")
+        code = got.get("access_code") if isinstance(got, dict) else None
+        if not code:
+            return self._json({"error": "code not found", "detail": redact(got)}, status=404)
+
+        c_start = parse_iso(code.get("starts_at"))
+        c_end = parse_iso(code.get("ends_at"))
+        if c_start is None:
+            return self._json({"error": "code has no starts_at (not time-bound)"}, status=422)
+
+        new_start = c_start + timedelta(hours=delta_hours)
+        now = datetime.now(timezone.utc)
+
+        # Guardrail: don't move start into the past (allow small grace window for slow humans)
+        if new_start < now - timedelta(minutes=5):
+            return self._json({
+                "error": "new start time is in the past",
+                "new_start": new_start.isoformat(),
+                "now": now.isoformat(),
+            }, status=422)
+
+        # Guardrail: don't push start past checkout
+        if c_end is not None and new_start >= c_end:
+            return self._json({
+                "error": "new start >= ends_at",
+                "new_start": new_start.isoformat(),
+                "ends_at": c_end.isoformat(),
+            }, status=422)
+
+        old_start_iso = c_start.isoformat().replace("+00:00", "Z")
+        new_start_iso = new_start.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        code_name = code.get("name") or code_id[:8]
+
+        # Audit log every attempt (dry-run + real)
+        audit_line = json.dumps({
+            "ts": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "code_id": code_id,
+            "code_name": code_name,
+            "account": account,
+            "delta_hours": delta_hours,
+            "old_start": old_start_iso,
+            "new_start": new_start_iso,
+            "dry_run": TIME_OVERRIDE_DRY_RUN,
+            "confirmed": confirm == "YES",
+        })
+        try:
+            with open(CHECKIN_OVERRIDE_LOG, "a") as f:
+                f.write(audit_line + "\n")
+        except Exception as e:
+            print(f"[EXC] override audit write: {redact(e)}", flush=True)
+
+        if TIME_OVERRIDE_DRY_RUN:
+            print(f"[OVERRIDE dry-run] {code_name}: {old_start_iso} -> {new_start_iso} ({delta_hours:+.1f}h)", flush=True)
+            return self._json({
+                "ok": True,
+                "dry_run": True,
+                "code_name": code_name,
+                "old_start": old_start_iso,
+                "new_start": new_start_iso,
+                "delta_hours": delta_hours,
+                "note": "no Seam write; flip time_override_dry_run:false in add-on options to apply",
+            })
+
+        # Real write — starts_at only, PIN preserved (SDK/API leaves 'code' alone when omitted)
+        ends_iso = c_end.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ") if c_end else None
+        payload = {"access_code_id": code_id, "starts_at": new_start_iso}
+        if ends_iso:
+            payload["ends_at"] = ends_iso
+        result = seam_request(api_key, "POST", "/access_codes/update", body=payload)
+        if isinstance(result, dict) and result.get("error"):
+            print(f"[OVERRIDE FAIL] {code_name}: {redact(result)}", flush=True)
+            return self._json({"error": "seam update failed", "detail": redact(result)}, status=502)
+        print(f"[OVERRIDE] {code_name}: {old_start_iso} -> {new_start_iso} ({delta_hours:+.1f}h)", flush=True)
+        return self._json({
+            "ok": True,
+            "dry_run": False,
+            "code_name": code_name,
+            "old_start": old_start_iso,
+            "new_start": new_start_iso,
+            "delta_hours": delta_hours,
+        })
+
     def app_config(self):
         self._json({
             "skip_codes": sorted(PERMANENT_CODES),
@@ -393,6 +535,8 @@ class H(BaseHTTPRequestHandler):
             "door_to_room_prefix": DOOR_TO_ROOM_PREFIX,
             "basement_device_id": BASEMENT_DEVICE_ID,
             "site_name": SITE_NAME,
+            "time_override_dry_run": TIME_OVERRIDE_DRY_RUN,
+            "time_override_max_delta_h": TIME_OVERRIDE_MAX_DELTA_H,
         })
 
     def sync_status(self):

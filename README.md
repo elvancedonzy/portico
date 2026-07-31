@@ -9,10 +9,11 @@ Works with Schlage, Yale, Kwikset, and any lock supported by [Seam](https://seam
 ## What it does
 
 - **Auto-extend on Airbnb changes.** Guest extends their stay → the Seam access code's `ends_at` shifts by the same delta. PIN preserved. End-to-end in ~2 min.
+- **Manual early check-in shift (v0.3.1).** Guest asks to check in early → tap `[-2h] [-1h] [+1h] [+2h] [Custom]` on the guest card. Code's `starts_at` shifts, PIN preserved, mirrors sync within 60s. Airbnb ICS is date-only, so time-of-day changes need this manual nudge.
 - **Booking.com email intake.** New Booking.com reservation email → time-bound access code created automatically with a strong random PIN.
 - **Lock-to-lock mirroring.** Per-room codes automatically appear on the front door as `s~ <name>`; whole-house codes appear on every room lock as `h~ <name>`. seam_sync runs every minute.
 - **Baseline-tracked delta logic.** Airbnb ICS is date-only (midnight), but your code has a real check-out hour. Portico records the calendar baseline on first bind and only applies the *delta* on future extensions — preserving your chosen hour-of-day.
-- **Safety caps.** Won't extend more than 30 days in one delta. Won't shorten more than 2 days. Never touches codes named in `skip_codes` (owners, cleaners).
+- **Safety caps.** Won't extend more than 30 days in one delta. Won't shorten more than 2 days. Manual shifts refuse past-time or beyond-checkout. Never touches codes named in `skip_codes` (owners, cleaners).
 - **Dashboard.** Dark-mode, mobile-friendly, HA Ingress. See all locks, all codes, all guests at a glance.
 
 ## Requirements
@@ -61,11 +62,12 @@ Report vulnerabilities to `elvancedonzy@gmail.com`. Please do not open public is
 
 ## Status
 
-**v0.2 — released 2026-07-30.** Runs the author's real short-term rental. Extension flow tested end-to-end. Not yet on HACS; install via add-on repository as described above.
+**v0.3.1 — released 2026-07-31.** Runs the author's real short-term rental. Extension + manual shift flows tested end-to-end. Not yet on HACS; install via add-on repository as described above.
 
 ### Changelog
 
-- **v0.2.0** (2026-07-30) — Removed LAN port publication; the proxy now requires the HA Ingress header. Bumped add-on version.
+- **v0.3.1** (2026-07-31) — Manual early check-in shift buttons on each guest card. New `POST /api/checkin-override` endpoint (ingress-gated) with safety caps: rejects trivial shifts (<5 min), caps at ±6h without explicit confirm, refuses past-time / beyond-checkout. Dry-run mode default `true` on first install — flip in add-on options after button-soak. Every shift logged to `/data/checkin_overrides.log`.
+- **v0.2.0** (2026-07-30) — Removed LAN port publication; the proxy now requires the HA Ingress header.
 - **v0.1.0** (2026-07-30) — Initial public release.
 
 ## License
