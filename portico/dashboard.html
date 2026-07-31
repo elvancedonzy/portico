@@ -1,0 +1,1176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0a0a0c">
+<link rel="manifest" href="/manifest.json">
+<meta name="apple-mobile-web-app-title" content="Locks">
+<title>Rosehill Locks</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  :root {
+    --bg: #0a0a0c;
+    --surface: #16161a;
+    --surface2: #1d1d22;
+    --surface3: #26262c;
+    --border: rgba(255,255,255,0.06);
+    --border2: rgba(255,255,255,0.12);
+    --text: #f4f4f6;
+    --text2: #b4b4be;
+    --muted: #6e6e78;
+    --green: #5dcaa5; --green-bg: rgba(93,202,165,0.12);
+    --red: #f07b7b; --red-bg: rgba(240,123,123,0.12);
+    --blue: #7fa9ec; --blue-bg: rgba(127,169,236,0.12);
+    --amber: #efb070; --amber-bg: rgba(239,176,112,0.12);
+    --purple: #a08eff; --purple-bg: rgba(160,142,255,0.12);
+    --r: 12px; --r-sm: 8px;
+  }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, 'SF Pro Display', system-ui, sans-serif; min-height: 100vh; padding-bottom: env(safe-area-inset-bottom); -webkit-font-smoothing: antialiased; line-height: 1.4; }
+  button { font-family: inherit; cursor: pointer; }
+  input { font-family: inherit; }
+  i.ti { display: inline-block; line-height: 1; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes slideUp { from { transform: translateY(100%) } to { transform: translateY(0) } }
+  @keyframes fade { from { opacity: 0 } to { opacity: 1 } }
+
+  /* Header */
+  header { padding: max(16px, env(safe-area-inset-top)) 16px 8px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; background: var(--bg); z-index: 50; }
+  .logo-block .logo-eyebrow { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+  .logo-block .logo-name { font-size: 18px; font-weight: 500; margin-top: 2px; }
+  .live-pill { display: flex; align-items: center; gap: 6px; padding: 5px 10px; background: var(--green-bg); border-radius: 20px; font-size: 11px; color: var(--green); font-weight: 500; cursor: pointer; border: none; }
+  .live-pill.warn { background: var(--amber-bg); color: var(--amber); }
+  .live-pill.err { background: var(--red-bg); color: var(--red); }
+  .live-pill .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: pulse 2s infinite; }
+
+  /* Layout */
+  .content { padding: 0 14px 100px; }
+  .section-title { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 16px 4px 8px; display: flex; justify-content: space-between; align-items: center; }
+  .section-title .action { font-size: 12px; font-weight: 500; color: var(--blue); text-transform: none; letter-spacing: 0; background: none; border: none; }
+
+  /* Stats grid */
+  .stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin: 8px 0; }
+  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 12px; }
+  .stat-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  .stat-value { display: flex; align-items: baseline; gap: 4px; margin-top: 4px; }
+  .stat-num { font-size: 22px; font-weight: 500; }
+  .stat-sub { font-size: 12px; color: var(--text2); }
+  .stat-num.green { color: var(--green); }
+  .stat-num.amber { color: var(--amber); }
+  .stat-num.red { color: var(--red); }
+
+  /* Today's activity */
+  .today-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 4px 12px; }
+  .today-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; }
+  .today-row + .today-row { border-top: 1px solid var(--border); }
+  .today-ico { width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+  .today-ico.in { background: var(--green-bg); color: var(--green); }
+  .today-ico.out { background: var(--amber-bg); color: var(--amber); }
+  .today-text { flex: 1; min-width: 0; }
+  .today-name { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .today-meta { font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+  /* Device card */
+  .device-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); margin-bottom: 8px; overflow: hidden; }
+  .device-card.open { border-color: var(--border2); }
+  .device-header { padding: 12px 14px; display: flex; align-items: center; gap: 12px; cursor: pointer; user-select: none; }
+  .device-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 18px; }
+  .device-icon.door { background: var(--blue-bg); color: var(--blue); }
+  .device-icon.room { background: var(--purple-bg); color: var(--purple); }
+  .device-text { flex: 1; min-width: 0; }
+  .device-name { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .device-meta { font-size: 11px; color: var(--muted); margin-top: 2px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .device-meta .warn { color: var(--amber); }
+  .device-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .battery-pct { font-size: 11px; display: flex; align-items: center; gap: 3px; color: var(--muted); }
+  .battery-pct.green { color: var(--green); }
+  .battery-pct.amber { color: var(--amber); }
+  .battery-pct.red { color: var(--red); }
+  .lock-btn { padding: 5px 10px; border-radius: 8px; background: var(--surface3); border: 1px solid var(--border2); color: var(--text2); font-size: 11px; font-weight: 500; display: flex; align-items: center; gap: 4px; }
+  .lock-btn.locked { background: var(--green-bg); border-color: rgba(93,202,165,0.3); color: var(--green); }
+  .lock-btn.unlocked { background: var(--amber-bg); border-color: rgba(239,176,112,0.3); color: var(--amber); }
+  .chev { font-size: 12px; color: var(--muted); transition: transform 0.2s; }
+  .chev.open { transform: rotate(180deg); }
+
+  .device-body { border-top: 1px solid var(--border); background: var(--bg); display: none; }
+  .device-body.open { display: block; animation: fade 0.15s; }
+
+  /* Filter chips */
+  .filter-row { display: flex; gap: 4px; padding: 10px 12px 6px; overflow-x: auto; scrollbar-width: none; }
+  .filter-row::-webkit-scrollbar { display: none; }
+  .filter-chip { padding: 4px 10px; border-radius: 14px; font-size: 11px; white-space: nowrap; border: 1px solid var(--border); background: transparent; color: var(--text2); }
+  .filter-chip.active { background: var(--text); color: var(--bg); border-color: var(--text); font-weight: 500; }
+
+  /* Code items */
+  .codes-list { padding: 4px 8px 8px; }
+  .code-item { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 10px 12px; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
+  .code-item:last-child { margin-bottom: 0; }
+  .code-item.auto { border-left: 2.5px solid var(--blue); }
+  .code-item.whole { border-left: 2.5px solid var(--purple); }
+  .code-item.perm { border-left: 2.5px solid var(--muted); }
+  .code-item.unmanaged { background: var(--amber-bg); border-color: rgba(239,176,112,0.3); }
+  .code-item.expired { opacity: 0.45; }
+  .code-left { flex: 1; min-width: 0; }
+  .code-name-row { display: flex; align-items: center; gap: 6px; }
+  .code-tag { font-size: 9px; padding: 1px 5px; border-radius: 3px; font-weight: 500; letter-spacing: 0.05em; flex-shrink: 0; }
+  .code-tag.s { background: var(--blue-bg); color: var(--blue); }
+  .code-tag.h { background: var(--purple-bg); color: var(--purple); }
+  .code-tag.p { background: var(--surface3); color: var(--muted); }
+  .code-tag.u { background: var(--amber-bg); color: var(--amber); }
+  .code-name { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .code-meta { font-size: 11px; color: var(--muted); margin-top: 3px; }
+  .code-pin { font-family: 'SF Mono', ui-monospace, monospace; font-size: 13px; font-weight: 500; color: var(--amber); background: var(--amber-bg); padding: 3px 8px; border-radius: 6px; flex-shrink: 0; border: none; cursor: pointer; }
+  .code-pin:active { background: var(--amber); color: var(--bg); }
+  .code-pin.perm { color: var(--muted); background: var(--surface3); }
+  .code-btn { width: 26px; height: 26px; border-radius: 6px; background: transparent; border: none; color: var(--muted); display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; }
+  .code-btn:hover { background: var(--surface3); color: var(--text); }
+  .code-btn.del:hover { background: var(--red-bg); color: var(--red); }
+  .code-actions { display: flex; gap: 2px; flex-shrink: 0; }
+  .convert-btn { padding: 4px 10px; background: var(--amber); color: var(--bg); border: none; border-radius: 6px; font-size: 11px; font-weight: 500; }
+  .empty-codes { padding: 24px 16px; text-align: center; color: var(--muted); font-size: 13px; }
+
+  /* Bottom action bar in device body */
+  .device-actions-bar { display: flex; gap: 6px; padding: 4px 8px 10px; }
+  .device-actions-bar .btn { flex: 1; }
+  .add-code-btn { display: flex; align-items: center; justify-content: center; gap: 5px; padding: 9px; background: var(--text); color: var(--bg); border: none; border-radius: 8px; font-size: 12px; font-weight: 500; }
+  .actions-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .actions-row .add-code-btn { flex: 1; min-width: 120px; }
+  .actions-row .btn-neutral { background: var(--surface3); color: var(--text); }
+  .actions-row .btn-danger { background: var(--red-bg); color: var(--red); }
+  .sync-note { font-size: 11px; color: var(--amber); padding: 8px 0; text-align: center; }
+
+  /* Bottom nav */
+  .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(22,22,26,0.92); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-top: 1px solid var(--border); display: flex; padding: 6px 0 max(8px, env(safe-area-inset-bottom)); z-index: 40; }
+  .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px; color: var(--muted); font-size: 10px; border: none; background: none; }
+  .nav-item.active { color: var(--blue); }
+  .nav-icon { font-size: 20px; }
+
+  /* Bottom sheet */
+  .sheet-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100; display: none; align-items: flex-end; justify-content: center; animation: fade 0.15s; }
+  .sheet-bg.open { display: flex; }
+  .sheet { background: var(--surface); border-radius: 20px 20px 0 0; padding: 8px 18px max(20px, env(safe-area-inset-bottom)); width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto; animation: slideUp 0.2s; }
+  .sheet-handle { width: 36px; height: 4px; background: var(--border2); border-radius: 2px; margin: 0 auto 14px; }
+  .sheet-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .sheet-title { font-size: 16px; font-weight: 500; }
+  .sheet-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .sheet-close { width: 28px; height: 28px; background: var(--surface2); border: none; border-radius: 8px; color: var(--text2); display: flex; align-items: center; justify-content: center; }
+  .field { margin-bottom: 12px; }
+  .field-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 6px; }
+  .field input[type=text],
+  .field input[type=datetime-local] { width: 100%; height: 40px; padding: 0 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px; }
+  .field input:focus { outline: none; border-color: var(--blue); }
+  .field input[type=datetime-local] { font-size: 12px; }
+  .pin-row { display: flex; gap: 8px; }
+  .pin-row input { flex: 1; font-family: 'SF Mono', ui-monospace, monospace; font-size: 18px; letter-spacing: 4px; text-align: center; }
+  .pin-row button { height: 40px; padding: 0 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text2); font-size: 12px; display: flex; align-items: center; gap: 5px; }
+  .preset-row { display: flex; flex-wrap: wrap; gap: 6px; }
+  .preset-chip { padding: 6px 12px; background: var(--surface2); color: var(--text2); border: 1px solid var(--border); border-radius: 14px; font-size: 12px; }
+  .preset-chip.active { background: var(--text); color: var(--bg); border-color: var(--text); font-weight: 500; }
+  .preset-chip.early { background: var(--amber-bg); color: var(--amber); border-color: rgba(239,176,112,0.3); display: inline-flex; align-items: center; gap: 5px; }
+  .dates-row { display: flex; gap: 8px; }
+  .dates-row > input { flex: 1; }
+  .sheet-actions { display: flex; gap: 8px; margin-top: 18px; }
+  .sheet-actions .btn { height: 44px; border-radius: 10px; font-size: 14px; font-weight: 500; display: flex; align-items: center; justify-content: center; gap: 6px; border: none; }
+  .sheet-actions .cancel { flex: 1; background: var(--surface2); border: 1px solid var(--border); color: var(--text2); }
+  .sheet-actions .confirm { flex: 2; background: var(--text); color: var(--bg); }
+  .sheet-actions .confirm:disabled { opacity: 0.4; }
+
+  /* Toast */
+  .toast { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); background: var(--surface3); border: 1px solid var(--border2); color: var(--text); padding: 10px 18px; border-radius: 20px; font-size: 13px; z-index: 200; opacity: 0; transition: opacity 0.2s; pointer-events: none; max-width: 90vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .toast.show { opacity: 1; }
+  .toast.success { border-color: rgba(93,202,165,0.4); color: var(--green); }
+  .toast.error { border-color: rgba(240,123,123,0.4); color: var(--red); }
+
+  /* Loading */
+  .loading { text-align: center; padding: 60px 20px; color: var(--muted); font-size: 14px; }
+  .spinner { width: 28px; height: 28px; border: 2.5px solid var(--border2); border-top-color: var(--blue); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 14px; }
+
+  /* Log panel */
+  .log-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 12px; font-family: 'SF Mono', ui-monospace, monospace; font-size: 11px; max-height: 60vh; overflow-y: auto; }
+  .log-line { padding: 4px 0; border-bottom: 1px solid var(--border); color: var(--muted); line-height: 1.5; }
+  .log-line:last-child { border-bottom: none; }
+  .log-line.success { color: var(--green); }
+  .log-line.error { color: var(--red); }
+  .log-line.warn { color: var(--amber); }
+  .log-line.info { color: var(--text2); }
+
+  /* Sync tab */
+  .info-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 12px 14px; margin-bottom: 8px; }
+  .legend-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 13px; }
+  .upcoming-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 13px; }
+  .upcoming-row + .upcoming-row { border-top: 1px solid var(--border); }
+
+  /* Next-up hero */
+  .next-up { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 4px 0 10px; }
+  .nup-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 14px 12px; min-height: 110px; }
+  .nup-card.arr { border-top: 2.5px solid var(--green); }
+  .nup-card.dep { border-top: 2.5px solid var(--amber); }
+  .nup-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600; margin-bottom: 8px; display: flex; align-items: center; gap: 4px; }
+  .nup-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 1px; }
+  .nup-room { font-size: 10px; color: var(--muted); margin-bottom: 8px; }
+  .nup-countdown { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1; }
+  .nup-time { font-size: 10px; color: var(--muted); margin-top: 4px; }
+  /* Occupancy pills */
+  .occ-strip { display: flex; gap: 5px; margin: 10px 0 4px; flex-wrap: wrap; }
+  .occ-pill { padding: 4px 10px; border-radius: 14px; font-size: 11px; font-weight: 500; display: flex; align-items: center; gap: 4px; border: 1px solid; }
+  .occ-pill.occ { background: var(--green-bg); color: var(--green); border-color: rgba(93,202,165,0.3); }
+  .occ-pill.soon { background: var(--amber-bg); color: var(--amber); border-color: rgba(239,176,112,0.3); }
+  .occ-pill.vacant { background: var(--surface2); color: var(--muted); border-color: var(--border); }
+  .occ-pill.ac-alert { background: var(--red-bg); color: var(--red); border-color: rgba(237,106,94,0.3); }
+  /* AC state badge on room device cards */
+  .ac-badge { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 7px; font-size: 13px; flex-shrink: 0; }
+  .ac-badge.ac-on { background: var(--blue-bg); color: var(--blue); }
+  .ac-badge.ac-off { background: var(--surface3); color: var(--muted); }
+  .ac-badge.ac-alert { background: var(--red-bg); color: var(--red); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-block">
+    <div class="logo-eyebrow" id="siteEyebrow">Rosehill</div>
+    <div class="logo-name">Locks</div>
+  </div>
+  <button class="live-pill" id="livePill" onclick="loadCodes()"><span class="dot"></span><span id="liveTxt">Loading</span></button>
+</header>
+
+<div class="content" id="mainContent">
+  <div class="loading"><div class="spinner"></div>Connecting…</div>
+</div>
+
+<div class="bottom-nav">
+  <button class="nav-item active" id="tab-locks" onclick="showTab('locks')"><i class="ti ti-lock nav-icon"></i>Locks</button>
+  <button class="nav-item" id="tab-sync" onclick="showTab('sync')"><i class="ti ti-refresh nav-icon"></i>Sync</button>
+  <button class="nav-item" id="tab-log" onclick="showTab('log')"><i class="ti ti-file-text nav-icon"></i>Log</button>
+  <button class="nav-item" onclick="loadDashboard()"><i class="ti ti-reload nav-icon"></i>Reload</button>
+</div>
+
+<div class="sheet-bg" id="sheetBg" onclick="if(event.target===this)closeSheet()">
+  <div class="sheet" id="sheetContent"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// Fallback defaults — overwritten by /api/config on load (single source of truth: shared_config.py)
+let SKIP = ['Mom','Elvis','Christy','Jennifer','Josh','Cy','Jenny'];
+let RP = 's~ ', WP = 'h~ ';
+let BASEMENT_ID = 'd1bb8bdc-a681-4c8c-829c-42e8f0726387';
+let SITE_NAME = 'Rosehill';
+const CHECKIN_H=12, CHECKIN_M=0;
+const CHECKOUT_H=10, CHECKOUT_M=0;
+
+let devices=[], stats={inSync:0,toAdd:0,toRemove:0,whole:0,total:0,online:0,last:null};
+let logs=[], tab='locks', expanded=new Set(), filter='all', roomFilter='all';
+let currentPreset = null, currentEarlyOffset = 0, currentLateOffset = 0;
+let haSummary = null;
+let syncStatus = null, persistentLog = [], searchQuery = '';
+
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+async function api(account, path, method='GET', body=null) {
+  const opts = { method, headers: { 'Content-Type':'application/json', 'X-Account':String(account) } };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch(path, opts);
+  const data = await r.json();
+  if (!r.ok) throw new Error(data.error?.message || data.error || 'HTTP '+r.status);
+  return data;
+}
+
+function addLog(msg, type='info') {
+  logs.unshift({t:new Date().toLocaleTimeString(), msg, type});
+  if (logs.length>200) logs.pop();
+  if (tab==='log') renderLog();
+}
+
+async function loadHaSummary() {
+  try {
+    const r = await fetch('/api/ha-summary');
+    if (r.ok) haSummary = await r.json();
+  } catch(e) { haSummary = null; }
+}
+
+async function loadAppConfig() {
+  try {
+    const r = await fetch('/api/config');
+    if (!r.ok) return;
+    const c = await r.json();
+    if (Array.isArray(c.skip_codes)) SKIP = c.skip_codes;
+    if (c.room_to_door_prefix) RP = c.room_to_door_prefix;
+    if (c.door_to_room_prefix) WP = c.door_to_room_prefix;
+    if (c.basement_device_id) BASEMENT_ID = c.basement_device_id;
+    if (c.site_name) {
+      SITE_NAME = c.site_name;
+      const eyebrow = document.getElementById('siteEyebrow');
+      if (eyebrow) eyebrow.textContent = SITE_NAME;
+      document.title = SITE_NAME + ' Locks';
+    }
+  } catch(e) { /* keep fallback defaults */ }
+}
+
+async function loadSyncStatus() {
+  try {
+    const r = await fetch('/api/sync-status');
+    if (r.ok) syncStatus = await r.json();
+  } catch(e) { syncStatus = null; }
+}
+
+async function loadSyncLog() {
+  try {
+    const r = await fetch('/api/sync-log');
+    if (r.ok) { const d = await r.json(); persistentLog = d.lines||[]; }
+  } catch(e) { /* keep previous */ }
+}
+
+async function loadDashboard() {
+  document.getElementById('liveTxt').textContent='Connecting';
+  document.getElementById('livePill').className='live-pill warn';
+  document.getElementById('mainContent').innerHTML='<div class="loading"><div class="spinner"></div>Loading devices…</div>';
+  await loadAppConfig();
+  try {
+    const [r1,r2] = await Promise.all([api(1,'/devices/list'), api(2,'/devices/list'), loadHaSummary(), loadSyncStatus()]);
+    devices = [...(r1.devices||[]).map(d=>({...d,_acct:1})), ...(r2.devices||[]).map(d=>({...d,_acct:2}))];
+    addLog('Connected to '+devices.length+' devices', 'success');
+    await loadCodes();
+  } catch(e) {
+    addLog('Connection failed: '+e.message,'error');
+    document.getElementById('mainContent').innerHTML='<div class="loading" style="color:var(--red)">Connection failed<br><small>'+e.message+'</small></div>';
+    document.getElementById('liveTxt').textContent='Offline';
+    document.getElementById('livePill').className='live-pill err';
+  }
+}
+
+async function loadCodes() {
+  document.getElementById('liveTxt').textContent='Refreshing';
+  document.getElementById('livePill').className='live-pill warn';
+  loadHaSummary();
+  loadSyncStatus();
+  try {
+    await Promise.all(devices.map(async d=>{
+      const [mc,uc] = await Promise.all([
+        api(d._acct,'/access_codes/list?device_id='+d.device_id),
+        api(d._acct,'/access_codes/unmanaged/list?device_id='+d.device_id).catch(()=>({access_codes:[]}))
+      ]);
+      d._codes = mc.access_codes||[];
+      d._unmanaged = uc.access_codes||[];
+    }));
+    computeStats();
+    stats.last = new Date();
+    document.getElementById('liveTxt').textContent='Live · '+stats.last.toLocaleTimeString();
+    document.getElementById('livePill').className='live-pill';
+    render();
+  } catch(e) {
+    addLog('Refresh failed: '+e.message,'error');
+    document.getElementById('liveTxt').textContent='Error';
+    document.getElementById('livePill').className='live-pill err';
+  }
+}
+
+function computeStats() {
+  stats.total = devices.reduce((s,d)=>s+(d._codes?.length||0),0);
+  stats.online = devices.filter(d=>d.properties?.online).length;
+  const rooms = devices.filter(d=>d._acct===1);
+  const door = devices.find(d=>d._acct===2 && d.device_id !== BASEMENT_ID);
+  if (!door) return;
+  const roomNames = new Set();
+  rooms.forEach(d=>d._codes.forEach(c=>{if(c.name && !c.name.startsWith(WP)) roomNames.add(c.name);}));
+  const managed=new Map(), whole=new Map();
+  door._codes.forEach(c=>{
+    if(!c.name)return;
+    if(c.name.startsWith(RP)) managed.set(c.name.slice(RP.length),c);
+    else if(!c.name.startsWith(WP) && !SKIP.includes(c.name)) whole.set(c.name,c);
+  });
+  const mn = new Set(managed.keys());
+  stats.inSync = [...roomNames].filter(n=>mn.has(n)).length;
+  stats.toAdd = [...roomNames].filter(n=>!mn.has(n) && !SKIP.includes(n)).length;
+  stats.toRemove = [...mn].filter(n=>!roomNames.has(n)).length;
+  stats.whole = whole.size;
+}
+
+function batteryLevel(level) {
+  if (level==null) return {pct:null, cls:'', icon:'ti-battery'};
+  const p = Math.round(level*100);
+  let cls = 'red', icon = 'ti-battery-1';
+  if (p>50) { cls='green'; icon='ti-battery-3'; }
+  else if (p>20) { cls='amber'; icon='ti-battery-2'; }
+  return {pct:p, cls, icon};
+}
+
+function codeType(c) {
+  if (c._unmanaged) return 'u';
+  if (!c.name) return '';
+  if (c.name.startsWith(RP)) return 's';
+  if (c.name.startsWith(WP)) return 'h';
+  if (SKIP.includes(c.name)) return 'p';
+  return '';
+}
+
+function codeDisplayName(c) {
+  if (!c.name) return '(unnamed)';
+  if (c.name.startsWith(RP)) return c.name.slice(RP.length);
+  if (c.name.startsWith(WP)) return c.name.slice(WP.length);
+  return c.name;
+}
+
+function fmtDate(d) {
+  if(!d) return '';
+  const dt = new Date(d);
+  const now = new Date();
+  const tomorrow = new Date(now); tomorrow.setDate(tomorrow.getDate()+1);
+  const sameDay = (a,b) => a.toDateString()===b.toDateString();
+  const time = dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+  if (sameDay(dt, now)) return 'Today '+time;
+  if (sameDay(dt, tomorrow)) return 'Tom '+time;
+  return dt.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' '+time;
+}
+
+function fmtDates(c) {
+  if (c.type!=='time_bound') return 'Ongoing';
+  return fmtDate(c.starts_at)+' → '+fmtDate(c.ends_at);
+}
+
+function isExpired(c) {
+  if (c.type!=='time_bound' || !c.ends_at) return false;
+  return new Date(c.ends_at) < new Date();
+}
+
+function minutesUntil(isoDate) {
+  if (!isoDate) return null;
+  const diff = new Date(isoDate) - Date.now();
+  return diff > 0 ? Math.floor(diff / 60000) : null;
+}
+
+function fmtCountdown(minutes) {
+  if (minutes == null) return '';
+  if (minutes < 60) return minutes + 'm';
+  const h = Math.floor(minutes / 60), m = minutes % 60;
+  return h + 'h' + (m > 0 ? ' ' + m + 'm' : '');
+}
+
+function shortRoom(key) {
+  return (key||'').replace('Rosehill Pl ', '').replace(' New', '');
+}
+
+function renderNextUp() {
+  if (!haSummary) return '';
+  const rooms = Object.entries(haSummary.rooms || {});
+  let arriving = null, arrivMins = Infinity;
+  let departing = null, deptMins = Infinity;
+
+  rooms.forEach(([key, r]) => {
+    const inMins = minutesUntil(r.next_guest?.starts_at);
+    if (inMins != null && inMins < arrivMins) { arrivMins = inMins; arriving = {key, r, guest: r.next_guest, mins: inMins}; }
+    const outMins = minutesUntil(r.active_guest?.ends_at);
+    if (outMins != null && outMins < deptMins) { deptMins = outMins; departing = {key, r, guest: r.active_guest, mins: outMins}; }
+  });
+
+  const occHtml = rooms.map(([key, r]) => {
+    const label = shortRoom(key);
+    const baseCls = r.occupied_now ? 'occ' : (minutesUntil(r.next_guest?.starts_at) != null && minutesUntil(r.next_guest?.starts_at) < 240 ? 'soon' : 'vacant');
+    const acAlert = r.ac_on === true && !r.occupied_now;
+    const cls = acAlert ? 'ac-alert' : baseCls;
+    const icon = r.occupied_now ? 'ti-bed' : (baseCls === 'soon' ? 'ti-clock' : 'ti-bed-off');
+    const snowflake = r.ac_on === true ? `<i class="ti ti-snowflake" style="font-size:9px"></i>` : '';
+    const title = acAlert ? 'AC on — room vacant!' : (r.ac_on === true ? 'AC on' : '');
+    return `<span class="occ-pill ${cls}" title="${esc(title)}"><i class="ti ${icon}" style="font-size:11px"></i>${esc(label)}${snowflake}</span>`;
+  }).join('');
+
+  const arrCard = arriving
+    ? `<div class="nup-card arr">
+        <div class="nup-label" style="color:var(--green)"><i class="ti ti-login" style="font-size:10px"></i>Arriving</div>
+        <div class="nup-name">${esc(arriving.guest.name)}</div>
+        <div class="nup-room">${esc(shortRoom(arriving.key))}</div>
+        <div class="nup-countdown" style="color:var(--green)">${fmtCountdown(arriving.mins)}</div>
+        <div class="nup-time">${fmtDate(arriving.guest.starts_at)}</div>
+      </div>`
+    : `<div class="nup-card arr" style="opacity:0.4">
+        <div class="nup-label" style="color:var(--green)"><i class="ti ti-login" style="font-size:10px"></i>Arriving</div>
+        <div style="color:var(--muted);font-size:12px;margin-top:8px">No arrivals soon</div>
+      </div>`;
+
+  const depCard = departing
+    ? `<div class="nup-card dep">
+        <div class="nup-label" style="color:var(--amber)"><i class="ti ti-logout" style="font-size:10px"></i>Departing</div>
+        <div class="nup-name">${esc(departing.guest.name)}</div>
+        <div class="nup-room">${esc(shortRoom(departing.key))}</div>
+        <div class="nup-countdown" style="color:var(--amber)">${fmtCountdown(departing.mins)}</div>
+        <div class="nup-time">${fmtDate(departing.guest.ends_at)}</div>
+      </div>`
+    : `<div class="nup-card dep" style="opacity:0.4">
+        <div class="nup-label" style="color:var(--amber)"><i class="ti ti-logout" style="font-size:10px"></i>Departing</div>
+        <div style="color:var(--muted);font-size:12px;margin-top:8px">No checkouts soon</div>
+      </div>`;
+
+  return `<div class="occ-strip">${occHtml}</div><div class="next-up">${arrCard}${depCard}</div>`;
+}
+
+function todaysActivity() {
+  // Prefer haSummary — computed server-side, includes Back Door / basement
+  if (haSummary?.summary) {
+    const ins  = (haSummary.summary.todays_checkins  || []).map(e=>({type:'in',  name:e.name, time:e.time, deviceName:e.device}));
+    const outs = (haSummary.summary.todays_checkouts || []).map(e=>({type:'out', name:e.name, time:e.time, deviceName:e.device}));
+    return [...ins, ...outs].sort((a,b)=>new Date(a.time)-new Date(b.time));
+  }
+  // Fallback: scan Account 1 codes only
+  const now = new Date();
+  const sameDay = (a)=> new Date(a).toDateString()===now.toDateString();
+  const events = [];
+  devices.filter(d=>d._acct===1).forEach(d=>{
+    (d._codes||[]).forEach(c=>{
+      if (!c.name || SKIP.includes(c.name)) return;
+      if (c.type!=='time_bound') return;
+      const display = codeDisplayName(c);
+      if (c.starts_at && sameDay(c.starts_at)) events.push({type:'in', name:display, time:c.starts_at, deviceName:d.properties?.name||'Room'});
+      if (c.ends_at && sameDay(c.ends_at)) events.push({type:'out', name:display, time:c.ends_at, deviceName:d.properties?.name||'Room'});
+    });
+  });
+  const seen=new Set(), uniq=[];
+  events.sort((a,b)=>new Date(a.time)-new Date(b.time)).forEach(e=>{
+    const k=e.type+'|'+e.name;
+    if (!seen.has(k)) { seen.add(k); uniq.push(e); }
+  });
+  return uniq;
+}
+
+function renderTodayCard() {
+  const today = todaysActivity();
+  if (!today.length) return '';
+  return `<div class="section-title">Today's activity</div>
+  <div class="today-card">
+    ${today.map(e=>`<div class="today-row">
+      <div class="today-ico ${e.type}"><i class="ti ti-${e.type==='in'?'login':'logout'}"></i></div>
+      <div class="today-text">
+        <div class="today-name">${esc(e.name)}</div>
+        <div class="today-meta">${e.type==='in'?'Check-in':'Check-out'} · ${esc(e.deviceName||e.device?.properties?.name||'Room')} · ${fmtDate(e.time)}</div>
+      </div>
+    </div>`).join('')}
+  </div>`;
+}
+
+function renderDeviceCard(d, type) {
+  const isOpen = expanded.has(d.device_id);
+  const online = d.properties?.online;
+  const battery = batteryLevel(d.properties?.battery?.level);
+  const locked = d.properties?.locked;
+  const name = d.properties?.name || d.device_id;
+  const codes = d._codes||[], unmanaged = d._unmanaged||[];
+  const icon = type==='door' ? 'ti-door' : 'ti-bed';
+  const roomSummary = (type === 'room' && haSummary?.rooms) ? haSummary.rooms[name] : null;
+  const acOn = roomSummary?.ac_on;
+  const acAlert = acOn === true && !roomSummary?.occupied_now;
+
+  let items = [...codes.map(c=>({...c,_unmanaged:false})), ...unmanaged.map(c=>({...c,_unmanaged:true}))];
+  if (filter!=='all') {
+    items = items.filter(c=>{
+      const t = codeType(c);
+      if (filter==='auto') return t==='s';
+      if (filter==='whole') return t==='h';
+      if (filter==='perm') return t==='p';
+      if (filter==='unmanaged') return t==='u';
+      if (filter==='active') return !isExpired(c) && t!=='u';
+      return true;
+    });
+  }
+  if (searchQuery) {
+    items = items.filter(c => codeDisplayName(c).toLowerCase().includes(searchQuery));
+  }
+
+  let codesHtml = '';
+  if (!items.length) {
+    codesHtml = '<div class="empty-codes">No codes match filter</div>';
+  } else {
+    codesHtml = '<div class="codes-list">';
+    items.forEach(c=>{
+      const t = codeType(c);
+      const tagCls = {s:'auto',h:'whole',p:'perm',u:'unmanaged'};
+      const tagLbls = {s:'AUTO',h:'WHOLE',p:'PERM',u:'UNMANAGED'};
+      const display = codeDisplayName(c);
+      const isPerm = SKIP.includes(c.name||'');
+      const expired = isExpired(c);
+
+      if (c._unmanaged) {
+        codesHtml += `<div class="code-item unmanaged">
+          <div class="code-left">
+            <div class="code-name-row">
+              <i class="ti ti-alert-triangle" style="font-size:13px;color:var(--amber)"></i>
+              <span class="code-name">${esc(display)}</span>
+            </div>
+            <div class="code-meta">${fmtDates(c)}</div>
+          </div>
+          <button class="code-pin">${esc(c.code)||'****'}</button>
+          <button class="convert-btn" onclick="convertCode(${d._acct},'${c.access_code_id}')">Convert</button>
+        </div>`;
+      } else {
+        codesHtml += `<div class="code-item ${tagCls[t]||''} ${expired?'expired':''}">
+          <div class="code-left">
+            <div class="code-name-row">
+              ${t ? `<span class="code-tag ${t}">${tagLbls[t]}</span>` : ''}
+              <span class="code-name">${esc(display)}</span>
+            </div>
+            <div class="code-meta">${fmtDates(c)}</div>
+          </div>
+          <button class="code-pin ${isPerm?'perm':''}" onclick="copyPin('${c.code||''}')">${esc(c.code)||'****'}</button>
+          <div class="code-actions">
+            ${!isPerm ? `<button class="code-btn" onclick="sharePin('${esc(display).replace(/'/g,"\\'")}','${c.code||''}')" aria-label="Share"><i class="ti ti-share-2"></i></button>` : ''}
+            ${!isPerm ? `<button class="code-btn" onclick="openEditSheet(${d._acct},'${c.access_code_id}','${d.device_id}')" aria-label="Edit"><i class="ti ti-pencil"></i></button>` : ''}
+            ${!isPerm ? `<button class="code-btn del" onclick="delCode(${d._acct},'${c.access_code_id}')" aria-label="Delete"><i class="ti ti-x"></i></button>` : ''}
+          </div>
+        </div>`;
+      }
+    });
+    codesHtml += '</div>';
+  }
+
+  const meta = [
+    `${codes.length} codes`,
+    unmanaged.length ? `<span class="warn">⚠ ${unmanaged.length} unmanaged</span>` : null,
+  ].filter(Boolean).join(' · ');
+
+  return `<div class="device-card ${isOpen?'open':''}">
+    <div class="device-header" onclick="toggleDevice('${d.device_id}')">
+      <div class="device-icon ${type}"><i class="ti ${icon}"></i></div>
+      <div class="device-text">
+        <div class="device-name">${esc(name)}</div>
+        <div class="device-meta">${meta}</div>
+      </div>
+      <div class="device-actions">
+        ${acOn != null ? `<span class="ac-badge ${acAlert?'ac-alert':acOn?'ac-on':'ac-off'}" title="${acAlert?'AC on — room vacant!':acOn?'AC on':'AC off'}"><i class="ti ti-snowflake"></i></span>` : ''}
+        ${battery.pct!=null ? `<span class="battery-pct ${battery.cls}"><i class="ti ${battery.icon}" style="font-size:14px"></i>${battery.pct}%</span>` : ''}
+        ${online && locked!==undefined ? `<button class="lock-btn ${locked?'locked':'unlocked'}" onclick="event.stopPropagation();doLock(${d._acct},'${d.device_id}',this)"><i class="ti ti-${locked?'lock':'lock-open'}"></i>${locked?'Locked':'Open'}</button>` : `<button class="lock-btn"><i class="ti ti-${online?'circle-check':'circle-x'}"></i>${online?'On':'Off'}</button>`}
+        <i class="ti ti-chevron-down chev ${isOpen?'open':''}"></i>
+      </div>
+    </div>
+    <div class="device-body ${isOpen?'open':''}">
+      <div class="filter-row">
+        ${['all','active','auto','whole','perm','unmanaged'].map(f=>`<button class="filter-chip ${filter===f?'active':''}" onclick="setFilter('${f}')">${f}</button>`).join('')}
+      </div>
+      ${codesHtml}
+      <div class="device-actions-bar">
+        <button class="add-code-btn" onclick="openAddSheet(${d._acct},'${d.device_id}','${esc(name).replace(/'/g,'&apos;')}')"><i class="ti ti-plus"></i>Add code to ${esc(name.split(' ').pop())}</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderLocks() {
+  if (!devices.length) {
+    document.getElementById('mainContent').innerHTML = '<div class="loading">No devices</div>';
+    return;
+  }
+  const allDoors    = devices.filter(d=>d._acct===2 && d.device_id !== BASEMENT_ID);
+  const basementDev = devices.find(d=>d.device_id === BASEMENT_ID);
+  const allRooms    = devices.filter(d=>d._acct===1);
+
+  // Room filter labels derived from actual device names
+  const roomLabels = allRooms.map(d=>shortRoom(d.properties?.name||''));
+  const roomChips = [
+    {key:'all', label:'All'},
+    {key:'whole', label:'Whole House'},
+    ...roomLabels.map(l=>({key:l, label:l}))
+  ];
+
+  const doors = roomFilter==='whole' ? allDoors
+              : roomFilter==='all'   ? allDoors
+              : [];
+  const rooms = roomFilter==='whole' ? []
+              : roomFilter==='all'   ? allRooms
+              : allRooms.filter(d=>shortRoom(d.properties?.name||'')===roomFilter);
+
+  const roomFilterHtml = `<div class="filter-row" style="padding:10px 12px 4px">
+    ${roomChips.map(c=>`<button class="filter-chip ${roomFilter===c.key?'active':''}" onclick="setRoomFilter('${esc(c.key)}')">${esc(c.label)}</button>`).join('')}
+  </div>`;
+
+  const searchHtml = `<div class="field" style="padding:0 12px;margin:4px 0 0">
+    <input type="text" placeholder="Search guest name…" value="${esc(searchQuery)}" oninput="setSearch(this.value)">
+  </div>`;
+
+  let html = roomFilterHtml + (roomFilter==='all' ? renderNextUp() : '') + `
+    <div class="stats">
+      <div class="stat"><div class="stat-label">In sync</div><div class="stat-value"><span class="stat-num green">${stats.inSync}</span><span class="stat-sub">/ ${stats.toAdd+stats.inSync}</span></div></div>
+      <div class="stat"><div class="stat-label">Pending</div><div class="stat-value"><span class="stat-num ${stats.toAdd>0?'amber':'green'}">${stats.toAdd}</span><span class="stat-sub">to add</span></div></div>
+      <div class="stat"><div class="stat-label">Whole-house</div><div class="stat-value"><span class="stat-num" style="color:var(--purple)">${stats.whole}</span><span class="stat-sub">guests</span></div></div>
+      <div class="stat"><div class="stat-label">Devices</div><div class="stat-value"><span class="stat-num green">${stats.online}</span><span class="stat-sub">online</span></div></div>
+    </div>
+    ${renderSyncIssues()}
+    ${renderTodayCard()}
+    ${searchHtml}`;
+
+  if (doors.length) {
+    html += `<div class="section-title">Front Door</div>`;
+    doors.forEach(d=>{ html += renderDeviceCard(d, 'door'); });
+  }
+  if (roomFilter==='all' && basementDev) {
+    html += `<div class="section-title">Back Door — Basement</div>`;
+    html += renderDeviceCard(basementDev, 'door');
+  }
+  if (rooms.length) {
+    html += `<div class="section-title">Rooms</div>`;
+    rooms.forEach(d=>{ html += renderDeviceCard(d, 'room'); });
+  }
+
+  document.getElementById('mainContent').innerHTML = html;
+}
+
+function renderSync() {
+  let upcoming = [];
+  devices.forEach(d=>{
+    (d._codes||[]).forEach(c=>{
+      if (c.type==='time_bound' && c.starts_at && new Date(c.starts_at)>new Date()) {
+        upcoming.push({c,d});
+      }
+    });
+  });
+  upcoming.sort((a,b)=>new Date(a.c.starts_at)-new Date(b.c.starts_at));
+  const upcomingHtml = upcoming.slice(0,5).map(({c,d})=>`<div class="upcoming-row">
+    <div>
+      <div style="font-weight:500">${esc(codeDisplayName(c))}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:2px">${esc(d.properties?.name||d.device_id)}</div>
+    </div>
+    <div style="font-size:11px;color:var(--muted);text-align:right;align-self:center">${fmtDate(c.starts_at)}</div>
+  </div>`).join('') || '<div style="color:var(--muted);font-size:13px;text-align:center;padding:8px">No upcoming check-ins</div>';
+
+  const lastRunHtml = syncStatus?.last_run
+    ? `<div style="text-align:center;font-size:11px;color:var(--muted);margin-top:4px">Last sync script run: ${fmtDate(syncStatus.last_run)}</div>` : '';
+
+  document.getElementById('mainContent').innerHTML = `
+    <div class="section-title">Sync status</div>
+    <div class="stats">
+      <div class="stat"><div class="stat-label">In sync</div><div class="stat-value"><span class="stat-num green">${stats.inSync}</span></div></div>
+      <div class="stat"><div class="stat-label">Pending add</div><div class="stat-value"><span class="stat-num ${stats.toAdd>0?'amber':'green'}">${stats.toAdd}</span></div></div>
+      <div class="stat"><div class="stat-label">Pending remove</div><div class="stat-value"><span class="stat-num ${stats.toRemove>0?'amber':'green'}">${stats.toRemove}</span></div></div>
+      <div class="stat"><div class="stat-label">Whole-house</div><div class="stat-value"><span class="stat-num" style="color:var(--purple)">${stats.whole}</span></div></div>
+    </div>
+    ${renderSyncIssues()}
+    ${lastRunHtml}
+    <div class="section-title">Upcoming check-ins</div>
+    <div class="info-card">${upcomingHtml}</div>
+    <div class="section-title">Code types</div>
+    <div class="info-card">
+      <div class="legend-row"><span class="code-tag s">AUTO</span><span style="color:var(--muted)">Room → Front Door (auto-synced)</span></div>
+      <div class="legend-row"><span class="code-tag h">WHOLE</span><span style="color:var(--muted)">Front Door → All Rooms</span></div>
+      <div class="legend-row"><span class="code-tag p">PERM</span><span style="color:var(--muted)">Permanent (never removed)</span></div>
+      <div class="legend-row"><span class="code-tag u">UNMNG</span><span style="color:var(--muted)">Unmanaged — needs convert</span></div>
+    </div>
+    <div class="section-title">Actions</div>
+    <div class="actions-row">
+      <button class="add-code-btn" onclick="triggerSync()"><i class="ti ti-bolt"></i>Force sync now</button>
+      <button class="add-code-btn" onclick="loadCodes()"><i class="ti ti-refresh"></i>Refresh</button>
+      <button class="add-code-btn btn-neutral" onclick="convertAll()"><i class="ti ti-wand"></i>Convert unmanaged</button>
+      <button class="add-code-btn btn-danger" onclick="deleteExpired()"><i class="ti ti-trash"></i>Delete expired</button>
+    </div>
+    <div style="text-align:center;font-size:11px;color:var(--muted);margin-top:16px">Last refresh: ${stats.last?stats.last.toLocaleTimeString():'never'}</div>`;
+}
+
+function renderLog() {
+  let html = `<div class="section-title">Activity log (this session) <button class="action" onclick="logs=[];renderLog()">Clear</button></div>
+    <div class="log-panel">`;
+  if (!logs.length) html += '<div class="log-line">No activity yet</div>';
+  logs.forEach(l=>{ html += `<div class="log-line ${l.type}">[${esc(l.t)}] ${esc(l.msg)}</div>`; });
+  html += '</div>';
+  html += `<div class="section-title">Sync script log (persistent)</div><div class="log-panel">`;
+  if (!persistentLog.length) html += '<div class="log-line">No log yet</div>';
+  else persistentLog.slice().reverse().forEach(line => {
+    const cls = /\[ERROR\]/.test(line) ? 'error' : /\[WARNING\]/.test(line) ? 'warn' : 'info';
+    html += `<div class="log-line ${cls}">${esc(line)}</div>`;
+  });
+  html += '</div>';
+  document.getElementById('mainContent').innerHTML = html;
+}
+
+function render() {
+  if (tab==='locks') renderLocks();
+  else if (tab==='sync') renderSync();
+  else if (tab==='log') renderLog();
+}
+
+function showTab(t) {
+  tab = t;
+  document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
+  document.getElementById('tab-'+t)?.classList.add('active');
+  render();
+  if (t === 'log') loadSyncLog().then(()=>{ if (tab==='log') renderLog(); });
+}
+
+function toggleDevice(id) {
+  expanded.has(id) ? expanded.delete(id) : expanded.add(id);
+  renderLocks();
+}
+
+function setFilter(f) { filter = f; renderLocks(); }
+function setRoomFilter(r) { roomFilter = r; renderLocks(); }
+
+function pad(n) { return String(n).padStart(2,'0'); }
+function toLocal(d) {
+  return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+'T'+pad(d.getHours())+':'+pad(d.getMinutes());
+}
+
+function computePresetDates(preset, earlyOffset=0, lateOffset=0) {
+  const now = new Date();
+  let start = new Date(now), end = new Date(now);
+  if (preset==='tonight') {
+    start.setHours(CHECKIN_H, CHECKIN_M, 0, 0);
+    end = new Date(start); end.setDate(end.getDate()+1); end.setHours(CHECKOUT_H, CHECKOUT_M, 0, 0);
+  } else if (preset==='weekend') {
+    const day = now.getDay();
+    const fri = day<=5 ? 5-day : 12-day;
+    start.setDate(start.getDate()+fri); start.setHours(CHECKIN_H, CHECKIN_M, 0, 0);
+    end = new Date(start); end.setDate(end.getDate()+2); end.setHours(CHECKOUT_H, CHECKOUT_M, 0, 0);
+  } else if (preset==='3days') {
+    start.setHours(CHECKIN_H, CHECKIN_M, 0, 0);
+    end = new Date(start); end.setDate(end.getDate()+3); end.setHours(CHECKOUT_H, CHECKOUT_M, 0, 0);
+  } else if (preset==='week') {
+    start.setHours(CHECKIN_H, CHECKIN_M, 0, 0);
+    end = new Date(start); end.setDate(end.getDate()+7); end.setHours(CHECKOUT_H, CHECKOUT_M, 0, 0);
+  } else {
+    return {start:null, end:null};
+  }
+  if (earlyOffset) start.setHours(start.getHours() - earlyOffset);
+  if (lateOffset) end.setHours(end.getHours() + lateOffset);
+  return {start, end};
+}
+
+function openAddSheet(acct, deviceId, deviceName) {
+  currentPreset = 'tonight';
+  currentEarlyOffset = 0;
+  currentLateOffset = 0;
+  const dates = computePresetDates('tonight');
+  const sheet = `
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <div>
+        <div class="sheet-title">Add code</div>
+        <div class="sheet-sub">To ${esc(deviceName)}</div>
+      </div>
+      <button class="sheet-close" onclick="closeSheet()" aria-label="Close"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="field">
+      <label class="field-label">Guest name</label>
+      <input type="text" id="addName" placeholder="e.g. John Smith" autocomplete="off">
+    </div>
+    <div class="field">
+      <label class="field-label">4-digit PIN</label>
+      <div class="pin-row">
+        <input type="text" id="addPin" inputmode="numeric" maxlength="4" placeholder="0000">
+        <button onclick="randomPin('addPin')"><i class="ti ti-dice"></i>Random</button>
+      </div>
+    </div>
+    <div class="field">
+      <label class="field-label">Duration</label>
+      <div class="preset-row">
+        <button class="preset-chip" data-preset="tonight" onclick="pickPreset(this)">Tonight</button>
+        <button class="preset-chip" data-preset="weekend" onclick="pickPreset(this)">Weekend</button>
+        <button class="preset-chip" data-preset="3days" onclick="pickPreset(this)">3 days</button>
+        <button class="preset-chip" data-preset="week" onclick="pickPreset(this)">1 week</button>
+        <button class="preset-chip" data-preset="permanent" onclick="pickPreset(this)">Permanent</button>
+      </div>
+      <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
+        <button class="preset-chip early" id="earlyChip" onclick="toggleEarly()"><i class="ti ti-clock"></i>Early check-in -2hr</button>
+        <button class="preset-chip early" id="lateChip" onclick="toggleLate()"><i class="ti ti-clock"></i>Late checkout +2hr</button>
+      </div>
+    </div>
+    <div class="field">
+      <label class="field-label">Check-in → Check-out</label>
+      <div class="dates-row">
+        <input type="datetime-local" id="addStart" value="${toLocal(dates.start)}">
+        <input type="datetime-local" id="addEnd" value="${toLocal(dates.end)}">
+      </div>
+    </div>
+    <div class="sheet-actions">
+      <button class="cancel" onclick="closeSheet()">Cancel</button>
+      <button class="confirm" onclick="submitAdd(${acct},'${deviceId}')"><i class="ti ti-check"></i>Create code</button>
+    </div>`;
+  document.getElementById('sheetContent').innerHTML = sheet;
+  document.getElementById('sheetBg').classList.add('open');
+  document.querySelector('.preset-chip[data-preset="tonight"]')?.classList.add('active');
+  setTimeout(()=>document.getElementById('addName').focus(), 100);
+}
+
+function pickPreset(btn) {
+  currentPreset = btn.dataset.preset;
+  document.querySelectorAll('.preset-chip[data-preset]').forEach(el=>el.classList.remove('active'));
+  btn.classList.add('active');
+  if (currentPreset==='permanent') {
+    document.getElementById('addStart').value = '';
+    document.getElementById('addEnd').value = '';
+  } else {
+    const dates = computePresetDates(currentPreset, currentEarlyOffset, currentLateOffset);
+    if (dates.start) document.getElementById('addStart').value = toLocal(dates.start);
+    if (dates.end) document.getElementById('addEnd').value = toLocal(dates.end);
+  }
+}
+
+function toggleEarly() {
+  currentEarlyOffset = currentEarlyOffset===0 ? 2 : 0;
+  const chip = document.getElementById('earlyChip');
+  if (currentEarlyOffset) {
+    chip.style.background='var(--amber)';
+    chip.style.color='var(--bg)';
+    chip.innerHTML = '<i class="ti ti-clock"></i>Early check-in ON (-2hr)';
+  } else {
+    chip.style.background='';
+    chip.style.color='';
+    chip.innerHTML = '<i class="ti ti-clock"></i>Early check-in -2hr';
+  }
+  if (currentPreset && currentPreset!=='permanent') {
+    const dates = computePresetDates(currentPreset, currentEarlyOffset, currentLateOffset);
+    if (dates.start) document.getElementById('addStart').value = toLocal(dates.start);
+    if (dates.end) document.getElementById('addEnd').value = toLocal(dates.end);
+  }
+}
+
+function toggleLate() {
+  currentLateOffset = currentLateOffset===0 ? 2 : 0;
+  const chip = document.getElementById('lateChip');
+  if (currentLateOffset) {
+    chip.style.background='var(--amber)'; chip.style.color='var(--bg)';
+    chip.innerHTML = '<i class="ti ti-clock"></i>Late checkout ON (+2hr)';
+  } else {
+    chip.style.background=''; chip.style.color='';
+    chip.innerHTML = '<i class="ti ti-clock"></i>Late checkout +2hr';
+  }
+  if (currentPreset && currentPreset!=='permanent') {
+    const dates = computePresetDates(currentPreset, currentEarlyOffset, currentLateOffset);
+    if (dates.end) document.getElementById('addEnd').value = toLocal(dates.end);
+  }
+}
+
+function randomPin(targetId) {
+  const pin = Math.floor(1000 + Math.random()*9000).toString();
+  document.getElementById(targetId).value = pin;
+}
+
+async function submitAdd(acct, deviceId) {
+  const name = document.getElementById('addName').value.trim();
+  const pin = document.getElementById('addPin').value.trim();
+  const start = document.getElementById('addStart').value;
+  const end = document.getElementById('addEnd').value;
+  if (!name || !pin) return toast('Name and PIN required','error');
+  if (!/^\d{4}$/.test(pin)) return toast('PIN must be 4 digits','error');
+  try {
+    const body = { device_id: deviceId, name, code: pin };
+    if (start && end) {
+      body.starts_at = new Date(start).toISOString();
+      body.ends_at = new Date(end).toISOString();
+    }
+    await api(acct, '/access_codes/create', 'POST', body);
+    toast('Code added','success');
+    addLog('Added "'+name+'" ('+pin+')','success');
+    closeSheet();
+    await loadCodes();
+  } catch(e) {
+    toast('Failed: '+e.message,'error');
+    addLog('Add failed: '+e.message,'error');
+  }
+}
+
+function openEditSheet(acct, codeId, deviceId) {
+  const dev = devices.find(d=>d.device_id===deviceId);
+  const code = dev?._codes?.find(c=>c.access_code_id===codeId);
+  if (!code) return;
+  const display = codeDisplayName(code);
+  const prefix = code.name?.startsWith(RP)?RP : code.name?.startsWith(WP)?WP : '';
+  const startVal = code.starts_at ? toLocal(new Date(code.starts_at)) : '';
+  const endVal = code.ends_at ? toLocal(new Date(code.ends_at)) : '';
+  const isManaged = !!prefix;
+
+  document.getElementById('sheetContent').innerHTML = `
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <div>
+        <div class="sheet-title">Edit code</div>
+        <div class="sheet-sub">${esc(dev.properties?.name||'Device')}</div>
+      </div>
+      <button class="sheet-close" onclick="closeSheet()"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="field">
+      <label class="field-label">Guest name</label>
+      <input type="text" id="editName" value="${esc(display)}">
+    </div>
+    <div class="field">
+      <label class="field-label">4-digit PIN</label>
+      <div class="pin-row">
+        <input type="text" id="editPin" inputmode="numeric" maxlength="4" value="${code.code||''}">
+        <button onclick="randomPin('editPin')"><i class="ti ti-dice"></i>Random</button>
+      </div>
+    </div>
+    <div class="field">
+      <label class="field-label">Check-in → Check-out</label>
+      <div class="dates-row">
+        <input type="datetime-local" id="editStart" value="${startVal}">
+        <input type="datetime-local" id="editEnd" value="${endVal}">
+      </div>
+    </div>
+    ${isManaged?`<div class="sync-note">Note: this is an auto-synced ${esc(prefix.trim())} code. Edits may be overwritten by the sync script.</div>`:''}
+    <div class="sheet-actions">
+      <button class="cancel" onclick="closeSheet()">Cancel</button>
+      <button class="confirm" onclick="submitEdit(${acct},'${codeId}','${prefix}')"><i class="ti ti-check"></i>Save</button>
+    </div>`;
+  document.getElementById('sheetBg').classList.add('open');
+}
+
+async function submitEdit(acct, codeId, prefix) {
+  const name = document.getElementById('editName').value.trim();
+  const pin = document.getElementById('editPin').value.trim();
+  const start = document.getElementById('editStart').value;
+  const end = document.getElementById('editEnd').value;
+  if (!name || !pin) return toast('Name and PIN required','error');
+  if (!/^\d{4}$/.test(pin)) return toast('PIN must be 4 digits','error');
+  try {
+    const body = { access_code_id: codeId, name: prefix+name, code: pin };
+    if (start) body.starts_at = new Date(start).toISOString();
+    if (end) body.ends_at = new Date(end).toISOString();
+    await api(acct, '/access_codes/update', 'POST', body);
+    toast('Updated','success');
+    addLog('Updated "'+name+'"','success');
+    closeSheet();
+    await loadCodes();
+  } catch(e) {
+    toast('Failed: '+e.message,'error');
+    addLog('Update failed: '+e.message,'error');
+  }
+}
+
+function closeSheet() {
+  document.getElementById('sheetBg').classList.remove('open');
+}
+
+async function doLock(acct, deviceId, btn) {
+  try {
+    const orig = btn.innerHTML;
+    btn.innerHTML = '<i class="ti ti-loader-2"></i>';
+    const d = await api(acct, '/devices/get?device_id='+deviceId);
+    const locked = d.device?.properties?.locked;
+    await api(acct, locked?'/locks/unlock_door':'/locks/lock_door', 'POST', {device_id:deviceId});
+    toast(locked?'Unlocked':'Locked','success');
+    addLog((locked?'Unlocked':'Locked')+': '+(d.device?.properties?.name||deviceId),'success');
+    setTimeout(loadCodes, 1500);
+  } catch(e) {
+    btn.innerHTML = '<i class="ti ti-lock"></i>Locked';
+    toast('Failed: '+e.message,'error');
+  }
+}
+
+async function delCode(acct, codeId) {
+  if (!confirm('Delete this code?')) return;
+  try {
+    await api(acct, '/access_codes/delete', 'POST', {access_code_id:codeId});
+    toast('Deleted','success');
+    addLog('Deleted code '+codeId.slice(0,8),'success');
+    await loadCodes();
+  } catch(e) {
+    toast('Failed: '+e.message,'error');
+  }
+}
+
+async function convertCode(acct, codeId) {
+  try {
+    await api(acct, '/access_codes/unmanaged/convert_to_managed', 'POST', {access_code_id:codeId});
+    toast('Converted','success');
+    addLog('Converted code '+codeId.slice(0,8),'success');
+    await loadCodes();
+  } catch(e) {
+    toast('Failed: '+e.message,'error');
+  }
+}
+
+async function convertAll() {
+  let count = 0;
+  for (const d of devices) {
+    for (const c of (d._unmanaged||[])) {
+      try {
+        await api(d._acct, '/access_codes/unmanaged/convert_to_managed', 'POST', {access_code_id:c.access_code_id});
+        count++;
+      } catch(e) { addLog('Convert failed: '+e.message,'error'); }
+    }
+  }
+  toast(count+' converted','success');
+  await loadCodes();
+}
+
+async function deleteExpired() {
+  const exp = [];
+  devices.forEach(d=>{
+    (d._codes||[]).forEach(c=>{
+      if (isExpired(c) && !SKIP.includes(c.name||'')) exp.push({d,c});
+    });
+  });
+  if (!exp.length) return toast('No expired codes','success');
+  if (!confirm(`Delete ${exp.length} expired code(s)?`)) return;
+  let count = 0;
+  for (const {d,c} of exp) {
+    try {
+      await api(d._acct, '/access_codes/delete', 'POST', {access_code_id:c.access_code_id});
+      count++;
+    } catch(e) { addLog('Delete failed: '+e.message,'error'); }
+  }
+  toast(count+' deleted','success');
+  await loadCodes();
+}
+
+function copyPin(pin) {
+  if (!pin) return;
+  navigator.clipboard?.writeText(pin).then(()=>toast('PIN copied: '+pin,'success')).catch(()=>toast('PIN: '+pin));
+}
+
+function sharePin(name, pin) {
+  if (!pin) return;
+  const text = 'PIN for '+name+': '+pin;
+  if (navigator.share) {
+    navigator.share({ text }).catch(()=>{});
+  } else {
+    copyPin(pin);
+  }
+}
+
+async function triggerSync() {
+  try {
+    const r = await fetch('/api/sync-trigger', { method: 'POST' });
+    const d = await r.json();
+    if (d.started) {
+      toast('Sync started','success');
+      addLog('Triggered manual sync','info');
+      setTimeout(loadCodes, 3000);
+    } else {
+      toast(d.reason || 'Sync already running');
+    }
+  } catch(e) {
+    toast('Failed: '+e.message,'error');
+  }
+}
+
+function setSearch(v) { searchQuery = v.trim().toLowerCase(); renderLocks(); }
+
+function renderSyncIssues() {
+  const issues = syncStatus?.issues || [];
+  if (!issues.length) return '';
+  const rows = issues.map(i => {
+    const cls = i.status === 'pending' ? 'warn' : 'err';
+    const label = i.status === 'pending' ? 'PENDING' : 'FAILED';
+    const detail = i.status === 'pending'
+      ? 'Waiting on lock confirmation'
+      : esc(i.reason || '');
+    return `<div class="legend-row"><span class="code-tag ${i.status==='pending'?'h':'u'}">${label}</span><span style="color:var(--muted)">${esc(i.action)} — ${detail}</span></div>`;
+  }).join('');
+  return `<div class="section-title">Sync issues</div><div class="info-card">${rows}</div>`;
+}
+
+function toast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast show '+type;
+  setTimeout(()=>t.className='toast', 3000);
+}
+
+loadDashboard();
+setInterval(()=>{ if(document.visibilityState==='visible') loadCodes(); }, 60000);
+document.addEventListener('visibilitychange', ()=>{
+  if (document.visibilityState==='visible' && stats.last && (Date.now()-stats.last)>30000) loadCodes();
+});
+</script>
+</body>
+</html>

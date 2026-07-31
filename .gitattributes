@@ -1,0 +1,11 @@
+# Force LF for anything that runs inside the Linux container.
+# Windows checkout must not turn these into CRLF or the shell will refuse them.
+*.sh    text eol=lf
+*.py    text eol=lf
+*.yaml  text eol=lf
+*.yml   text eol=lf
+*.md    text eol=lf
+*.html  text eol=lf
+Dockerfile  text eol=lf
+crontab text eol=lf
+LICENSE text eol=lf

@@ -1,0 +1,71 @@
+name: "Portico"
+description: "Keep Airbnb / Booking.com / VRBO reservations in sync with your smart locks. Extensions and cancellations flow to the PIN in under 2 minutes."
+version: "0.1.0"
+slug: "portico"
+init: false
+arch:
+  - aarch64
+  - amd64
+startup: application
+boot: auto
+ports:
+  8765/tcp: 8765
+ports_description:
+  8765/tcp: "Portico Web UI (LAN — prefer Ingress unless you know you need this)"
+ingress: true
+ingress_port: 8765
+panel_icon: mdi:key-chain-variant
+panel_title: Portico
+homeassistant_api: true
+map:
+  - config:rw
+options:
+  # Site branding — shown in the dashboard header
+  site_name: "My STR"
+
+  # Seam API keys — get from https://console.seam.co
+  # Two accounts supported so you can isolate room locks from main-entry locks
+  account1_api_key: ""
+  account2_api_key: ""
+
+  # Optional: Booking.com email intake (Gmail App Password)
+  # SEE SECURITY.md BEFORE ENABLING — Booking.com sends reservation confirmations
+  # to your inbox; this poller creates lock codes from them. If your inbox is
+  # ever compromised, a forged email = an unlock.
+  gmail_user: ""
+  gmail_app_password: ""
+
+  # Room locks — one entry per interior room lock (uses account1_api_key).
+  # Get device_id from Seam console → Devices, or leave empty and use only main entry.
+  rooms:
+    - name: "Room 1"
+      device_id: ""
+
+  # Main entry locks (use account2_api_key)
+  front_door_device_id: ""
+  basement_device_id: ""
+
+  # Permanent codes never touched by sync/cleanup (owners, cleaners, etc.)
+  skip_codes:
+    - "Owner"
+    - "Cleaner"
+
+  # Prefix conventions for lock-to-lock mirrors (owned by seam_sync)
+  # Change only if you already have codes that start with "s~" or "h~"
+  room_to_door_prefix: "s~ "
+  door_to_room_prefix: "h~ "
+schema:
+  site_name: str?
+  account1_api_key: str?
+  account2_api_key: str?
+  gmail_user: str?
+  gmail_app_password: password?
+  rooms:
+    - name: str
+      device_id: str?
+  front_door_device_id: str?
+  basement_device_id: str?
+  skip_codes:
+    - str
+  room_to_door_prefix: str?
+  door_to_room_prefix: str?

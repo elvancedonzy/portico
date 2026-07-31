@@ -1,0 +1,3 @@
+* * * * * . /data/runtime_env.sh; /usr/local/bin/python3 /seam_sync.py >> /data/seam_sync.log 2>&1
+*/2 * * * * . /data/runtime_env.sh; /usr/local/bin/python3 /airbnb_extend.py >> /data/airbnb_extend.log 2>&1
+17 3 * * * /seam_log_trim.sh
