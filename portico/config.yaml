@@ -1,6 +1,6 @@
 name: "Portico"
 description: "Keep Airbnb / Booking.com / VRBO reservations in sync with your smart locks. Extensions and cancellations flow to the PIN in under 2 minutes."
-version: "0.1.0"
+version: "0.2.0"
 slug: "portico"
 init: false
 arch:
@@ -8,10 +8,10 @@ arch:
   - amd64
 startup: application
 boot: auto
-ports:
-  8765/tcp: 8765
-ports_description:
-  8765/tcp: "Portico Web UI (LAN — prefer Ingress unless you know you need this)"
+# Note: no `ports:` mapping — port 8765 is not published to the LAN.
+# Access the UI via HA Ingress (sidebar panel or Add-on -> "Open Web UI").
+# Other add-ons on hassio_network can still reach the container by
+# hostname (e.g. from HA REST sensors), but LAN cannot.
 ingress: true
 ingress_port: 8765
 panel_icon: mdi:key-chain-variant

@@ -470,7 +470,30 @@ class H(BaseHTTPRequestHandler):
         except Exception as e2:
             print("[EXC] ha_summary write:", redact(e2), flush=True)
 
+    def _is_ingress(self):
+        """True if this request came through HA supervisor's ingress proxy.
+
+        Supervisor sets `X-Hass-Source: core.ingress` on ingress requests and
+        also adds `X-Ingress-Path`. Direct calls (LAN, other add-ons on
+        hassio_network) have neither. We require this on state-changing
+        proxy calls so a rogue add-on on the same network can't create or
+        delete lock codes even if the port ever leaks.
+        """
+        return (
+            self.headers.get("X-Hass-Source") == "core.ingress"
+            or "X-Ingress-Path" in self.headers
+        )
+
     def proxy(self, method):
+        if not self._is_ingress():
+            client = self.client_address[0] if self.client_address else "?"
+            print(f"[REJECT] non-ingress {method} {self.path} from {client}", flush=True)
+            self.send_response(403)
+            self.send_cors()
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(b'{"error":"ingress-only endpoint"}')
+            return
         try:
             acct = self.headers.get("X-Account", "1")
             key = K1 if acct == "1" else K2

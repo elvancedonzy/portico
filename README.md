@@ -50,15 +50,23 @@ State lives in `/data/` (persisted across restarts). Nothing about your reservat
 
 Before enabling Booking.com intake, please read **[SECURITY.md](SECURITY.md)** — an attacker who forges a Booking.com email that reaches your inbox can create an access code on your locks. There are mitigations, but understand the model.
 
-Known issues in v0.1:
-- The dashboard binds `0.0.0.0:8765` — LAN-reachable, no auth. Prefer HA Ingress for access; consider firewalling the port. Fix planned for v0.2.
+Known issues in v0.2:
+- Booking.com email intake trusts email that reaches the configured inbox — a forged email = an unlock. Disable this feature or use a dedicated inbox.
 - Add-on options (API keys) are stored in `/data/options.json` in plaintext inside the container.
+
+Fixed in v0.2:
+- Port 8765 is no longer published to the LAN — only Ingress and same-host add-ons on `hassio_network` can reach it. The proxy also requires the Ingress header on state-changing calls.
 
 Report vulnerabilities to `elvancedonzy@gmail.com`. Please do not open public issues for security problems.
 
 ## Status
 
-**v0.1 — released 2026-07-30.** Runs the author's real short-term rental. Extension flow tested end-to-end. Not yet on HACS; install via add-on repository as described above.
+**v0.2 — released 2026-07-30.** Runs the author's real short-term rental. Extension flow tested end-to-end. Not yet on HACS; install via add-on repository as described above.
+
+### Changelog
+
+- **v0.2.0** (2026-07-30) — Removed LAN port publication; the proxy now requires the HA Ingress header. Bumped add-on version.
+- **v0.1.0** (2026-07-30) — Initial public release.
 
 ## License
 
