@@ -62,10 +62,11 @@ Report vulnerabilities to `elvancedonzy@gmail.com`. Please do not open public is
 
 ## Status
 
-**v0.3.1 — released 2026-07-31.** Runs the author's real short-term rental. Extension + manual shift flows tested end-to-end. Not yet on HACS; install via add-on repository as described above.
+**v0.3.2 — released 2026-08-02.** Runs the author's real short-term rental. Extension + manual shift + whole-home mirror awareness all tested end-to-end. Not yet on HACS; install via add-on repository as described above.
 
 ### Changelog
 
+- **v0.3.2** (2026-08-02) — `ha-summary` now reports `next_guest` and `minutes_until_checkin` for room devices when a whole-home guest is upcoming (via the `h~ ` mirror codes). Previously the front door had the countdown but per-room sensors reported `unavailable`, which broke downstream HA automations that combined `checkin_today` calendar state with room `minutes_until_checkin` — they mis-read the missing value as "guest is here now" and pre-cooled empty rooms for the entire whole-home day. Whole-home entries also carry a `whole_home: true` flag so consumers can distinguish them from per-room bookings.
 - **v0.3.1** (2026-07-31) — Manual early check-in shift buttons on each guest card. New `POST /api/checkin-override` endpoint (ingress-gated) with safety caps: rejects trivial shifts (<5 min), caps at ±6h without explicit confirm, refuses past-time / beyond-checkout. Dry-run mode default `true` on first install — flip in add-on options after button-soak. Every shift logged to `/data/checkin_overrides.log`.
 - **v0.2.0** (2026-07-30) — Removed LAN port publication; the proxy now requires the HA Ingress header.
 - **v0.1.0** (2026-07-30) — Initial public release.

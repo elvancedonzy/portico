@@ -256,6 +256,47 @@ def build_ha_summary():
                 upcoming = g
                 break
 
+        # v0.3.2 — For rooms, also consider h~ whole-home mirror codes so that HA
+        # sensors correctly show whole-home arrival countdowns per room. Without
+        # this the front door has the truth but individual rooms report
+        # minutes_until_checkin=None, which upstream automations mis-read as
+        # "guest is here now" when combined with a checkin_today calendar state.
+        # Front-door device (account 2) already sees the source (non-prefixed) code.
+        if d["_acct"] == 1:
+            wh_codes = []
+            for c in codes:
+                nm = c.get("name") or ""
+                if not nm.startswith("h~ "):
+                    continue
+                if c.get("type") != "time_bound":
+                    continue
+                s = parse_iso(c.get("starts_at"))
+                e = parse_iso(c.get("ends_at"))
+                if not e or e < now:
+                    continue
+                wh_codes.append({
+                    "name": nm[3:],
+                    "code": c.get("code"),
+                    "starts_at": c.get("starts_at"),
+                    "ends_at": c.get("ends_at"),
+                    "starts_dt": s,
+                    "ends_dt": e,
+                    "whole_home": True,
+                })
+            wh_codes.sort(key=lambda x: x["starts_dt"] or now)
+
+            if active is None:
+                for g in wh_codes:
+                    if g["starts_dt"] and g["starts_dt"] <= now <= g["ends_dt"]:
+                        active = g
+                        break
+
+            for g in wh_codes:
+                if g["starts_dt"] and g["starts_dt"] > now:
+                    if upcoming is None or g["starts_dt"] < upcoming["starts_dt"]:
+                        upcoming = g
+                    break
+
         # Today's check-ins/outs from this device
         for g in guest_codes:
             if g["starts_dt"] and g["starts_dt"].date() == now.date():

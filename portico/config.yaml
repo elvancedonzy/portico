@@ -1,6 +1,6 @@
 name: "Portico"
 description: "Keep Airbnb / Booking.com / VRBO reservations in sync with your smart locks. Extensions and cancellations flow to the PIN in under 2 minutes."
-version: "0.3.1"
+version: "0.3.2"
 slug: "portico"
 init: false
 arch:
